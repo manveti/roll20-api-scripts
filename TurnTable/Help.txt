@@ -1,0 +1,57 @@
+TurnTable
+
+TurnTable creates and manages multiple rotated copies of a page, allowing
+players to have different views of the page (e.g. one player viewing each side
+of a chess board).  Once pages are linked together, token movements are
+automatically synchronized.
+
+It is recommended that this script be used in conjunction with the CommandShell
+module, which will improve output formatting and command discovery.
+
+
+Commands:
+
+All TurnTable commands are accessed via the "turntable" command, which provides
+the following subcommands:
+
+    !turntable help [COMMAND]
+	Display a help message.  If COMMAND is specified, the help message will
+	detail the usage of the specified subcommand.  Otherwise, the help
+	message will summarize all available subcommands
+
+    !turntable spin N
+	Creates N-1 copies of a page, each rotated by 360/N degrees.  The pages
+	are automatically linked together.  Page can be specified using the
+	following options:
+	    -p P, --page P	ID or name (must be unique) of page to spin
+	    -P, --playerpage	Spin page with player ribbon
+	If no page is specified, the page containing the selected token will be
+	spun.  If no token is selected, the page with the player ribbon will be
+	spun.
+
+    !turntable link [PAGE 1] ... [PAGE N]
+	Links two or more pages together as rotated views of a single page.
+	Pages may be specified by ID or name (name must be unique), or using the
+	following options:
+	    -P, --playerpage	Include page with player ribbon
+	    -S, --selectedpage	Include page containing selected token
+	    -a NAME, --all NAME	Include all pages with the specified name
+
+    !turntable unlink [PAGE]
+	Removes group of linked pages containing the specified page.  Page may
+	be specified by ID or name (name must be unique), or using the following
+	option:
+	    -P, --playerpage	Unlink group containing page with player ribbon
+	If no page is specified, the group containing the page containing
+	the selected token will be unlinked.  If no token is selected, the group
+	containing the page with the player ribbon will be unlinked.
+
+    !turntable sync [PAGE]
+	Synchronizes the pages linked to the specified page (using the specified
+	page as the master).  Page may be specified by ID or name (name must be
+	unique), or using the following option:
+	    -P, --playerpage	Synchronize pages linked to page with player
+				ribbon
+	If no page is specified, the page containing the selected token will be
+	used as master.  If no token is selected, the page with the player
+	ribbon will be used as master.
