@@ -222,17 +222,21 @@ var TurnTable = TurnTable || {
     showHelp: function(who, cmd, subCmd){
 	var usage  = "", helpMsg = "";
 	switch (subCmd){
-	case "spin":
-	    usage += "Usage: " + cmd + " " + subCmd + " N [options]\n";
-	    usage += "Create N-1 copies of a page, each rotated by 360/N degrees.\n";
-	    helpMsg += "Parameters:\n";
-	    helpMsg += "  N:            Total number of pages, including original and rotated copies\n";
-	    helpMsg += "Options:\n";
-	    helpMsg += "  -p P, --page P        ID or name (must be unique) of page to spin\n";
-	    helpMsg += "  -P, --playerpage      Spin page with player ribbon\n";
-	    helpMsg += "                        If no page is specified, page with selected token will be spun.\n";
-	    helpMsg += "                        If no token is selected, page with player ribbon will be spun.\n";
-	    break;
+/////
+//
+//	case "spin":
+//	    usage += "Usage: " + cmd + " " + subCmd + " N [options]\n";
+//	    usage += "Create N-1 copies of a page, each rotated by 360/N degrees.\n";
+//	    helpMsg += "Parameters:\n";
+//	    helpMsg += "  N:            Total number of pages, including original and rotated copies\n";
+//	    helpMsg += "Options:\n";
+//	    helpMsg += "  -p P, --page P        ID or name (must be unique) of page to spin\n";
+//	    helpMsg += "  -P, --playerpage      Spin page with player ribbon\n";
+//	    helpMsg += "                        If no page is specified, page with selected token will be spun.\n";
+//	    helpMsg += "                        If no token is selected, page with player ribbon will be spun.\n";
+//	    break;
+//
+/////
 	case "link":
 	    usage += "Usage: " + cmd + " " + subCmd + " [PAGE 1] ... [PAGE N] [options]\n";
 	    usage += "Link two or more specified pages together as rotated versions of a page.\n";
@@ -494,6 +498,12 @@ var TurnTable = TurnTable || {
 	var err;
 	switch (tokens[1]){
 	case "spin":
+/////
+//
+	    err = "Error: The 'spin' subcommand requires page creation, which is not currently supported by the Roll20 API";
+	    break;
+//
+/////
 	    if (!posArgs[0]){
 		TurnTable.write("Error: Must specify number of rotated pages", msg.who, "", "TT");
 		return TurnTable.showHelp(msg.who, tokens[0], tokens[1]);

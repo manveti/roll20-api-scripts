@@ -20,6 +20,8 @@ the following subcommands:
 	message will summarize all available subcommands
 
     !turntable spin N
+	NOTE: This subcommand is not yet supported.  It relies on API support
+	for creating pages, which does not exist yet.
 	Creates N-1 copies of a page, each rotated by 360/N degrees.  The pages
 	are automatically linked together.  Page can be specified using the
 	following options:
