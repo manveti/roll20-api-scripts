@@ -1,6 +1,6 @@
 {
     "name":		"TokenPath",
-    "version":		"0.1",
+    "version":		"0.2",
     "description":	"Track movement of token at top of tracker, displaying its path for the round.",
     "authors":		"manveti",
     "roll20userid":	"503018",

@@ -21,9 +21,10 @@ will cause the path to be recomputed without that waypoint.
 
 Pips display distance based on the page settings (although they are not updated
 retroactively if the page settings are changed while a path is visible).  Note
-that each step of the path will be fully into a square, so all travel will be
-along the eight cardinal and ordinal directions.  However, when a page is
-configured to use Euclidean distance, the ruler tool does not follow this
-restriction, and can draw a direct line between any two squares.  As a result,
-the ruler tool may report a different distance from that reported on the pips
-when Euclidean distance is in use.
+that, if a page is configured to use a square grid, each step of the path will
+be fully into a square, so all travel will be along the eight cardinal and
+ordinal directions.  However, when a page is configured to use Euclidean
+distance, the ruler tool does not follow this restriction, and can draw a direct
+line between any two squares.  As a result, the ruler tool may report a
+different distance from that reported on the pips when Euclidean distance is in
+use.

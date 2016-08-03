@@ -3,7 +3,19 @@ var TokenPath = TokenPath || {
     PIP_SIZE: 30,
     START_TINT: "#80ffff",
     WAYPOINT_TINT: "#8080ff",
-    GRID_SIZE: 70,
+    GRID_DIMS: {'square': {
+			'width': 70,
+			'height': 70
+			},
+		'hex': {
+			'width': 37.5992809922301, // half-hex width, to account for offset odd rows
+			'height': 66.9658278242677
+			},
+		'hexr': {
+			'width': 69.585127490378,
+			'height': 39.84439499 // half-hex height, to account for offset odd columns
+			}
+		},
 
     ignoreRemoval: {},
 
@@ -41,77 +53,146 @@ var TokenPath = TokenPath || {
 	state.TokenPath.pips.push({'x': tok.get('left'), 'y': tok.get('top'), 'distance': 0, 'round': 0});
     },
 
-    drawPath: function(src, dest, diag, scale, pageId, layer, controlledBy){
+    drawPip: function(pip, pageId, layer, controlledBy, isStart){
+	var tokArgs = {'_subtype':		"token",
+			'_pageid':		pageId,
+			'imgsrc':		TokenPath.PIP_IMAGE,
+			'left':			pip.x,
+			'top':			pip.y,
+			'width':		TokenPath.PIP_SIZE,
+			'height':		TokenPath.PIP_SIZE,
+			'layer':		layer,
+			'name':			"" + (Math.round(pip.distance * 10) / 10),
+			'controlledby':		controlledBy,
+			'showname':		true,
+			'showplayers_name':	true};
+
+	if (isStart){
+	    tokArgs['tint_color'] = TokenPath.START_TINT;
+	}
+
+	var pipTok = createObj("graphic", tokArgs);
+	pip.token = pipTok.id;
+	toFront(pipTok);
+    },
+
+    drawPath: function(src, dest, grid, diag, scale, pageId, layer, controlledBy){
 	// draw a path from pip src to d, excluding src; return array of pips, adding pip token for all but dest
 	var retval = [];
 
-	var xOff = dest.x - src.x, yOff = dest.y - src.y;
-	if (xOff % TokenPath.GRID_SIZE){ xOff = Math.round(xOff / TokenPath.GRID_SIZE) * TokenPath.GRID_SIZE; }
-	if (yOff % TokenPath.GRID_SIZE){ yOff = Math.round(yOff / TokenPath.GRID_SIZE) * TokenPath.GRID_SIZE; }
+	var gridWidth = 1, gridHeight = 1;
 
-	var pip = src;
-	while ((xOff != 0) || (yOff != 0)){
-	    var xDir = (xOff ? xOff / Math.abs(xOff) : 0), yDir = (yOff ? yOff / Math.abs(yOff) : 0);
-	    var xStep = xDir * TokenPath.GRID_SIZE, yStep = yDir * TokenPath.GRID_SIZE;
+	if (grid in TokenPath.GRID_DIMS){
+	    gridWidth = TokenPath.GRID_DIMS[grid]['width'];
+	    gridHeight = TokenPath.GRID_DIMS[grid]['height'];
+	}
+
+	var xOff = dest.x - src.x, yOff = dest.y - src.y;
+	if (xOff % gridWidth){ xOff = Math.round(xOff / gridWidth) * gridWidth; }
+	if (yOff % gridHeight){ yOff = Math.round(yOff / gridHeight) * gridHeight; }
+
+	if (grid){
+	    var pip = src;
+	    while ((Math.abs(xOff) >= gridWidth / 10) || (Math.abs(yOff) >= gridHeight / 10)){
+		var xDir = (xOff ? xOff / Math.abs(xOff) : 0), yDir = (yOff ? yOff / Math.abs(yOff) : 0);
+		var xStep = xDir * gridWidth, yStep = yDir * gridHeight;
+		if (grid == "hex"){
+		    if (yStep == 0){ xStep *= 2; }
+		    if (xStep == 0){ xStep = gridWidth; }
+		}
+		if (grid == "hexr"){
+		    if (xStep == 0){ yStep *= 2; }
+		    if (yStep == 0){ yStep = gridHeight; }
+		}
+		if (retval.length > 0){
+		    // draw previous pip
+		    TokenPath.drawPip(pip, pageId, layer, controlledBy, false);
+		}
+		var distance = pip.distance, round = pip.round;
+		if ((grid != "square") || (xStep == 0) || (yStep == 0) || (diag == "foure")){ distance += scale; }
+		else if (diag == "manhattan"){ distance += 2 * scale; }
+		else if (diag == "threefive"){
+		    distance += scale * (1 + round);
+		    round = 1 - round;
+		}
+		else{ distance += Math.sqrt(2) * scale; }
+		pip = {'x':		pip.x + xStep,
+			'y':		pip.y + yStep,
+			'distance':	distance,
+			'round':	round};
+		retval.push(pip);
+		xOff -= xStep;
+		yOff -= yStep;
+	    }
 	    if (retval.length > 0){
-		//draw token for pip
-		var pipTok = createObj("graphic", {'_subtype':		"token",
-						    '_pageid':		pageId,
-						    'imgsrc':		TokenPath.PIP_IMAGE,
-						    'left':		pip.x,
-						    'top':		pip.y,
-						    'width':		TokenPath.PIP_SIZE,
-						    'height':		TokenPath.PIP_SIZE,
-						    'layer':		layer,
-						    'name':		"" + (Math.round(pip.distance * 10) / 10),
-						    'controlledby':	controlledBy,
-						    'showname':		true,
-						    'showplayers_name':	true});
-		pip.token = pipTok.id;
-		toFront(pipTok);
+		retval[retval.length - 1].x = dest.x;
+		retval[retval.length - 1].y = dest.y;
 	    }
-	    var distance = pip.distance, round = pip.round;
-	    if ((xStep == 0) || (yStep == 0) || (diag == "foure")){ distance += scale; }
-	    else if (diag == "manhattan"){ distance += 2 * scale; }
-	    else if (diag == "threefive"){
-		distance += scale * (1 + round);
-		round = 1 - round;
+	}
+	else{
+	    var gridSize = TokenPath.GRID_DIMS['square']['width'];
+	    var totDistOff = Math.sqrt(xOff * xOff + yOff * yOff), distOff;
+	    if (totDistOff >= gridSize / 2){
+		if (scale == 0){ distOff = gridSize; }
+		else{
+		    distOff = (scale - (src.distance % scale)) / scale;
+		    if (distOff < 0.5){ distOff += 1; }
+		    distOff *= gridSize;
+		}
+		var pip = src;
+		while (distOff <= totDistOff - (gridSize / 2)){
+		    var offFract = distOff / totDistOff;
+		    var xStep = xOff * offFract, yStep = yOff * offFract;
+		    if (retval.length > 0){
+			// draw previous pip
+			TokenPath.drawPip(pip, pageId, layer, controlledBy, false);
+		    }
+		    pip = {'x':		src.x + xStep,
+			    'y':	src.y + yStep,
+			    'distance':	src.distance + (distOff * scale / gridSize),
+			    'round':	0};
+		    retval.push(pip);
+		    distOff += gridSize;
+		}
 	    }
-	    else{ distance += Math.sqrt(2) * scale; }
-	    pip = {'x':		pip.x + xStep,
-		    'y':		pip.y + yStep,
-		    'distance':	distance,
-		    'round':	round}
+	    // add endpoint pip
+	    if (retval.length > 0){
+		// draw previous pip
+		TokenPath.drawPip(pip, pageId, layer, controlledBy, false);
+	    }
+	    pip = {'x':		dest.x,
+		    'y':		dest.y,
+		    'distance':	src.distance + (totDistOff * scale / gridSize),
+		    'round':	0};
 	    retval.push(pip);
-	    xOff -= xStep;
-	    yOff -= yStep;
 	}
-	if (retval.length > 0){
-	    retval[retval.length - 1].x = dest.x;
-	    retval[retval.length - 1].y = dest.y;
-	}
+
 	return retval;
     },
 
-    updatePath: function(pathStart, pathEnd, wp, diag, scale, pageId, layer, controlledBy){
+    updatePath: function(pathStart, pathEnd, wp, grid, diag, scale, pageId, layer, controlledBy){
 	// remove old pips between pathStart and pathEnd (leaving endpoints in place)
 	for (var i = pathStart + 1; i < pathEnd; i++){
 	    if (!state.TokenPath.pips[i].token){ continue; }
 	    var pipTok = getObj("graphic", state.TokenPath.pips[i].token);
 	    if (pipTok){ TokenPath.removeToken(pipTok); }
 	}
+
 	// draw a new path from pathStart to pathEnd
 	var newPath = TokenPath.drawPath(state.TokenPath.pips[pathStart], state.TokenPath.pips[pathEnd],
-					    diag, scale, pageId, layer, controlledBy);
+					    grid, diag, scale, pageId, layer, controlledBy);
+
 	// update pathEnd
 	newPath[newPath.length - 1].token = state.TokenPath.pips[pathEnd].token;
 	var pipTok = getObj("graphic", newPath[newPath.length - 1].token);
 	pipTok.set({'name': "" + (Math.round(newPath[newPath.length - 1].distance * 10) / 10)})
+
 	// splice in new path
 	var oldLen = pathEnd - pathStart, newLen = newPath.length, dLen = newLen - oldLen;
 	newPath.unshift(oldLen);
 	newPath.unshift(pathStart + 1);
 	state.TokenPath.pips.splice.apply(state.TokenPath.pips, newPath);
+
 	// update waypoints based on the length difference between the old and new paths
 	for (var i = wp; i < state.TokenPath.waypoints.length; i++){
 	    state.TokenPath.waypoints[i] += dLen;
@@ -121,45 +202,37 @@ var TokenPath = TokenPath || {
 
     handleTokenMove: function(tok, prev){
 	var page = getObj("page", tok.get('pageid'));
+	var grid = (page.get('showgrid') ? page.get('grid_type') : null);
 	var diag = page.get('diagonaltype'), scale = page.get('scale_number');
 
+	// check if tok is a pip token
 	var pipIdx;
 	for (pipIdx = 0; pipIdx < state.TokenPath.pips.length; pipIdx++){
 	    if (state.TokenPath.pips[pipIdx].token == tok.id){ break; }
 	}
 	if (pipIdx < state.TokenPath.pips.length){
 	    // tok is a pip token
-	    var xOff = tok.get('left') % TokenPath.GRID_SIZE, yOff = tok.get('top') % TokenPath.GRID_SIZE, expOff = TokenPath.GRID_SIZE / 2;
-	    if ((xOff != expOff) || (yOff != expOff)){
-		// move pip to center of square
-		tok.set({'left': tok.get('left') + expOff - xOff, 'top': tok.get('top') + expOff - yOff});
+	    if (grid == "square"){
+		// square grid snaps to top-left instead of center; fix that
+		var gridSize = TokenPath.GRID_DIMS['square']['width'];
+		var xOff = tok.get('left') % gridSize, yOff = tok.get('top') % gridSize, expOff = gridSize / 2;
+		if ((xOff != expOff) || (yOff != expOff)){
+		    tok.set({'left': tok.get('left') + expOff - xOff, 'top': tok.get('top') + expOff - yOff});
+		}
 	    }
+	    // determine if pip was waypoint; we'll use this later, and might change pipIdx below
 	    var wpIdx, isWp = false;
 	    for (wpIdx = 0; wpIdx < state.TokenPath.waypoints.length; wpIdx++){
 		if (state.TokenPath.waypoints[wpIdx] == pipIdx){ isWp = true; }
 		if (state.TokenPath.waypoints[wpIdx] >= pipIdx){ break; }
 	    }
 	    if (pipIdx == 0){
-		// tok was start point; create a new start point
-		var pipTok = createObj("graphic", {'_subtype':		"token",
-						    '_pageid':		tok.get('pageid'),
-						    'imgsrc':		TokenPath.PIP_IMAGE,
-						    'left':		state.TokenPath.pips[0].x,
-						    'top':		state.TokenPath.pips[0].y,
-						    'width':		TokenPath.PIP_SIZE,
-						    'height':		TokenPath.PIP_SIZE,
-						    'layer':		tok.get('layer'),
-						    'name':		"0",
-						    'controlledby':	tok.get('controlledby'),
-						    'tint_color':	TokenPath.START_TINT,
-						    'showname':		true,
-						    'showplayers_name':	true});
-		toFront(pipTok);
+		// tok was start point; create a new start point and insert it before tok
 		var startPip = {'x':		state.TokenPath.pips[0].x,
 				'y':		state.TokenPath.pips[0].y,
 				'distance':	0,
-				'round':	0,
-				'token':	pipTok.id};
+				'round':	0};
+		TokenPath.drawPip(startPip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), true);
 		state.TokenPath.pips.unshift(startPip);
 		for (var i = 0; i < state.TokenPath.waypoints.length; i++){
 		    state.TokenPath.waypoints[i] += 1;
@@ -167,94 +240,81 @@ var TokenPath = TokenPath || {
 		pipIdx = 1;
 	    }
 	    if (pipIdx == state.TokenPath.pips.length - 1){
-		// tok was end point; create a new end point
-		var pipTok = createObj("graphic", {'_subtype':		"token",
-						    '_pageid':		tok.get('pageid'),
-						    'imgsrc':		TokenPath.PIP_IMAGE,
-						    'left':		state.TokenPath.pips[pipIdx].x,
-						    'top':		state.TokenPath.pips[pipIdx].y,
-						    'width':		TokenPath.PIP_SIZE,
-						    'height':		TokenPath.PIP_SIZE,
-						    'layer':		tok.get('layer'),
-						    'name':		"" + (Math.round(state.TokenPath.pips[pipIdx].distance * 10) / 10),
-						    'controlledby':	tok.get('controlledby'),
-						    'tint_color':	TokenPath.START_TINT,
-						    'showname':		true,
-						    'showplayers_name':	true});
-		toFront(pipTok);
+		// tok was end point; create a new end point and append it to end of path
 		var endPip = {'x':		state.TokenPath.pips[pipIdx].x,
 				'y':		state.TokenPath.pips[pipIdx].y,
 				'distance':	state.TokenPath.pips[pipIdx].distance,
-				'round':	state.TokenPath.pips[pipIdx].round,
-				'token':	pipTok.id};
+				'round':	state.TokenPath.pips[pipIdx].round};
+		TokenPath.drawPip(endPip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), false);
 		state.TokenPath.pips.push(endPip);
 	    }
 	    state.TokenPath.pips[pipIdx].x = tok.get('left');
 	    state.TokenPath.pips[pipIdx].y = tok.get('top');
 	    var pathStart, pathEnd, newEnd;
 	    if (isWp){
-		// tok is already a waypoint; update paths leading into and out of it
+		// tok was already a waypoint; update paths into and out of it
 		pathStart = (wpIdx > 0 ? state.TokenPath.waypoints[wpIdx - 1] : 0);
 		pathEnd = pipIdx;
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
 		pathStart = newEnd;
 		pathEnd = (wpIdx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[wpIdx + 1] : state.TokenPath.pips.length - 1);
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
 	    }
 	    else{
 		// tok was not a waypoint; upgrade it to one and split path it was on into one in and one out of it
 		pathStart = (wpIdx > 0 ? state.TokenPath.waypoints[wpIdx - 1] : 0);
 		pathEnd = pipIdx;
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
 		state.TokenPath.waypoints.splice(wpIdx, 0, newEnd);
 		tok.set({'tint_color': TokenPath.WAYPOINT_TINT});
 		pathStart = newEnd;
 		pathEnd = (wpIdx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[wpIdx + 1] : state.TokenPath.pips.length - 1);
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
 	    }
-	    var allPips = state.TokenPath.pips;
-	    var distance = allPips[newEnd].distance, round = allPips[newEnd].round;
-	    for (var i = newEnd + 1; i < allPips.length; i++){
-		if ((allPips[i].x == allPips[i - 1].x) || (allPips[i].y == allPips[i - 1].y) || diag == "foure"){ distance += scale; }
-		else if (diag == "manhattan"){ distance += 2 * scale; }
-		else if (diag == "threefive"){
-		    distance += scale * (1 + round);
-		    round = 1 - round;
-		}
-		else{ distance += Math.sqrt(2) * scale; }
-		allPips[i].distance = distance;
-		allPips[i].round = round;
-		if (allPips[i].token){
-		    var pipTok = getObj("graphic", allPips[i].token);
-		    if (pipTok){
-			pipTok.set({'distance': distance, 'round': round});
+	    // fix up rest of path
+	    if (grid){
+		var allPips = state.TokenPath.pips;
+		var distance = allPips[newEnd].distance, round = allPips[newEnd].round;
+		for (var i = newEnd + 1; i < allPips.length; i++){
+		    if ((grid != "square") || (allPips[i].x == allPips[i - 1].x) || (allPips[i].y == allPips[i - 1].y) || diag == "foure"){ distance += scale; }
+		    else if (diag == "manhattan"){ distance += 2 * scale; }
+		    else if (diag == "threefive"){
+			distance += scale * (1 + round);
+			round = 1 - round;
 		    }
+		    else{ distance += Math.sqrt(2) * scale; }
+		    allPips[i].distance = distance;
+		    allPips[i].round = round;
+		    if (allPips[i].token){
+			var pipTok = getObj("graphic", allPips[i].token);
+			if (pipTok){
+			    pipTok.set({'name': "" + (Math.round(distance * 10) / 10)});
+			}
+		    }
+		}
+	    }
+	    else{
+		// must recompute remaining pips so they stay on multiples of scale
+		for (wpIdx += 1; wpIdx < state.TokenPath.waypoints.length; wpIdx += 1){
+		    pathStart = newEnd;
+		    pathEnd = (wpIdx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[wpIdx + 1] : state.TokenPath.pips.length - 1);
+		    newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
 		}
 	    }
 	    return;
 	}
 
+	// tok isn't a pip; see if it's a character token
 	var turnOrder = JSON.parse(Campaign().get('turnorder') || "[]");
-	if ((!turnOrder) || (!turnOrder.length) || (tok.id != turnOrder[0].id)){ return; } // it isn't tok's turn; ignore its movement
+	if ((!turnOrder) || (!turnOrder.length) || (tok.id != turnOrder[0].id)){
+	    // it isn't tok's turn; ignore its movement
+	    return;
+	}
 
 	// if we get here, tok is at the top of the turn order; track its movement
 	if (!state.TokenPath.pips[0].token){
 	    // initial pip not created yet; do so
-	    var pipTok = createObj("graphic", {'_subtype':		"token",
-						'_pageid':		tok.get('pageid'),
-						'imgsrc':		TokenPath.PIP_IMAGE,
-						'left':			state.TokenPath.pips[0].x,
-						'top':			state.TokenPath.pips[0].y,
-						'width':		TokenPath.PIP_SIZE,
-						'height':		TokenPath.PIP_SIZE,
-						'layer':		tok.get('layer'),
-						'name':			"0",
-						'controlledby':		tok.get('controlledby'),
-						'tint_color':		TokenPath.START_TINT,
-						'showname':		true,
-						'showplayers_name':	true});
-	    state.TokenPath.pips[0].token = pipTok.id;
-	    toFront(pipTok);
+	    TokenPath.drawPip(state.TokenPath.pips[0], tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), true);
 	}
 
 	// delete last segment of path
@@ -269,23 +329,10 @@ var TokenPath = TokenPath || {
 
 	// generate new path from last good pip to tok's current position
 	var newPips = TokenPath.drawPath(state.TokenPath.pips[lastGoodPip], {'x': tok.get('left'), 'y': tok.get('top')},
-					    diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+					    grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
 	if (newPips.length > 0){
 	    var lastPip = newPips[newPips.length - 1];
-	    var pipTok = createObj("graphic", {'_subtype':		"token",
-						'_pageid':		tok.get('pageid'),
-						'imgsrc':		TokenPath.PIP_IMAGE,
-						'left':			lastPip.x,
-						'top':			lastPip.y,
-						'width':		TokenPath.PIP_SIZE,
-						'height':		TokenPath.PIP_SIZE,
-						'layer':		tok.get('layer'),
-						'name':			"" + (Math.round(lastPip.distance * 10) / 10),
-						'controlledby':		tok.get('controlledby'),
-						'showname':		true,
-						'showplayers_name':	true});
-	    lastPip.token = pipTok.id;
-	    toFront(pipTok);
+	    TokenPath.drawPip(lastPip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), false);
 	    for (var i = 0; i < newPips.length; i++){ state.TokenPath.pips.push(newPips[i]); }
 	}
     },
@@ -302,30 +349,42 @@ var TokenPath = TokenPath || {
 	    if (state.TokenPath.pips[state.TokenPath.waypoints[idx]].token == tok.id){ break; }
 	}
 	if (idx < state.TokenPath.waypoints.length){
-	    // tok was a waypoint; delete waypoint
+	    // tok was a waypoint; delete waypoint and recompute path
 	    state.TokenPath.waypoints.splice(idx, 1);
 	    var page = getObj("page", tok.get('pageid'));
+	    var grid = (page.get('showgrid') ? page.get('grid_type') : null);
 	    var diag = page.get('diagonaltype'), scale = page.get('scale_number');
 	    var pathStart = (idx > 0 ? state.TokenPath.waypoints[idx - 1] : 0);
 	    var pathEnd = (idx < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[idx] : state.TokenPath.pips.length - 1);
-	    var newEnd = TokenPath.updatePath(pathStart, pathEnd, idx, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
-	    var allPips = state.TokenPath.pips;
-	    var distance = allPips[newEnd].distance, round = allPips[newEnd].round;
-	    for (var i = newEnd + 1; i < allPips.length; i++){
-		if ((allPips[i].x == allPips[i - 1].x) || (allPips[i].y == allPips[i - 1].y) || diag == "foure"){ distance += scale; }
-		else if (diag == "manhattan"){ distance += 2 * scale; }
-		else if (diag == "threefive"){
-		    distance += scale * (1 + round);
-		    round = 1 - round;
-		}
-		else{ distance += Math.sqrt(2) * scale; }
-		allPips[i].distance = distance;
-		allPips[i].round = round;
-		if (allPips[i].token){
-		    var pipTok = getObj("graphic", allPips[i].token);
-		    if (pipTok){
-			pipTok.set({'distance': distance, 'round': round});
+	    var newEnd = TokenPath.updatePath(pathStart, pathEnd, idx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+	    // fix up rest of path
+	    if (grid){
+		var allPips = state.TokenPath.pips;
+		var distance = allPips[newEnd].distance, round = allPips[newEnd].round;
+		for (var i = newEnd + 1; i < allPips.length; i++){
+		    if ((grid != "square") || (allPips[i].x == allPips[i - 1].x) || (allPips[i].y == allPips[i - 1].y) || diag == "foure"){ distance += scale; }
+		    else if (diag == "manhattan"){ distance += 2 * scale; }
+		    else if (diag == "threefive"){
+			distance += scale * (1 + round);
+			round = 1 - round;
 		    }
+		    else{ distance += Math.sqrt(2) * scale; }
+		    allPips[i].distance = distance;
+		    allPips[i].round = round;
+		    if (allPips[i].token){
+			var pipTok = getObj("graphic", allPips[i].token);
+			if (pipTok){
+			    pipTok.set({'name': "" + (Math.round(distance * 10) / 10)});
+			}
+		    }
+		}
+	    }
+	    else{
+		// must recompute remaining pips so they stay on multiples of scale
+		for (; idx < state.TokenPath.waypoints.length; idx += 1){
+		    pathStart = newEnd;
+		    pathEnd = (idx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[idx + 1] : state.TokenPath.pips.length - 1);
+		    newEnd = TokenPath.updatePath(pathStart, pathEnd, idx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
 		}
 	    }
 	    return;
@@ -337,21 +396,7 @@ var TokenPath = TokenPath || {
 	if (idx < state.TokenPath.pips.length){
 	    // tok was a non-waypoint pip; replace pip
 	    var pip = state.TokenPath.pips[idx];
-	    var pipTok = createObj("graphic", {'_subtype':		"token",
-						'_pageid':		tok.get('pageid'),
-						'imgsrc':		TokenPath.PIP_IMAGE,
-						'left':			pip.x,
-						'top':			pip.y,
-						'width':		TokenPath.PIP_SIZE,
-						'height':		TokenPath.PIP_SIZE,
-						'layer':		tok.get('layer'),
-						'name':			"" + (Math.round(pip.distance * 10) / 10),
-						'controlledby':		tok.get('controlledby'),
-						'showname':		true,
-						'showplayers_name':	true});
-	    pip.token = pipTok.id;
-	    toFront(pipTok);
-	    return;
+	    TokenPath.drawPip(pip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), (idx == 0));
 	}
     },
 
