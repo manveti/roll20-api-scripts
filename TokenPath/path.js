@@ -215,9 +215,10 @@ var TokenPath = TokenPath || {
 	    if (grid == "square"){
 		// square grid snaps to top-left instead of center; fix that
 		var gridSize = TokenPath.GRID_DIMS['square']['width'];
-		var xOff = tok.get('left') % gridSize, yOff = tok.get('top') % gridSize, expOff = gridSize / 2;
-		if ((xOff != expOff) || (yOff != expOff)){
-		    tok.set({'left': tok.get('left') + expOff - xOff, 'top': tok.get('top') + expOff - yOff});
+		var xOff = tok.get('left') % gridSize, yOff = tok.get('top') % gridSize;
+		var expXOff = state.TokenPath.pips[0].x % gridSize, expYOff = state.TokenPath.pips[0].y % gridSize;
+		if ((xOff != expXOff) || (yOff != expYOff)){
+		    tok.set({'left': tok.get('left') + expXOff - xOff, 'top': tok.get('top') + expYOff - yOff});
 		}
 	    }
 	    // determine if pip was waypoint; we'll use this later, and might change pipIdx below
