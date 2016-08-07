@@ -204,9 +204,10 @@ var AoEUtil = AoEUtil || {
 					    'width':		AoEUtil.DEFAULT_SIZE,
 					    'height':		AoEUtil.DEFAULT_SIZE,
 					    'layer':		tok.get('layer'),
+					    'name':		"",
 					    'controlledby':	tok.get('controlledby'),
-					    'showname':		false,
-					    'showplayers_name':	false});
+					    'showname':		true,
+					    'showplayers_name':	true});
 	if (!aimTok){ return "Error: Failed to create aim token."; }
 	toFront(aimTok);
 	state.AoEUtil.aimTok = aimTok.id;
@@ -229,7 +230,8 @@ var AoEUtil = AoEUtil || {
 	var toks = findObjs({'_type': "graphic", '_pageid': aimTok.get('pageid')}) || [];
 	for (var i = 0; i < toks.length; i++){
 	    if (toks[i].id == aimTok.id){ continue; }
-	    if (AoEUtil.getDistance(aimPoint, [toks[i].get('left'), toks[i].get('top')], page) > range){
+	    var dist = AoEUtil.getDistance(aimPoint, [toks[i].get('left'), toks[i].get('top')], page);
+	    if (dist > range){
 		continue;
 	    }
 	    var chSize = Math.round(Math.max(toks[i].get('width'), toks[i].get('height')) * AoEUtil.TARGET_SCALE);
@@ -241,9 +243,10 @@ var AoEUtil = AoEUtil || {
 					    'width':		chSize,
 					    'height':		chSize,
 					    'layer':		toks[i].get('layer'),
+					    'name':		(dist > 0 ? "" + dist : ""),
 					    'controlledby':	aimTok.get('controlledby'),
-					    'showname':		false,
-					    'showplayers_name':	false});
+					    'showname':		true,
+					    'showplayers_name':	true});
 	    if (!chTok){ return "Error: Failed to create target token."; }
 	    toFront(chTok);
 	    state.AoEUtil.targets.push({'crosshair': chTok.id, 'target': toks[i].id});
@@ -261,6 +264,7 @@ var AoEUtil = AoEUtil || {
 	for (var m = exp.exec(roll); m; m = exp.exec(roll)){
 	    varsNeeded.push(m[1]);
 	}
+	var didRoll = false;
 	for (var i = 0; i < state.AoEUtil.targets.length; i++){
 	    var chTok = getObj("graphic", state.AoEUtil.targets[i].crosshair);
 	    var tok = getObj("graphic", state.AoEUtil.targets[i].target);
@@ -301,7 +305,7 @@ var AoEUtil = AoEUtil || {
 		    toArray.push("gm");
 		    break;
 		case "all":
-		    toArray = [null];
+		    toArray = [""];
 		    break;
 		}
 		while (toArray.length > 0){
@@ -339,7 +343,7 @@ var AoEUtil = AoEUtil || {
 		    toArray.push("gm");
 		    break;
 		case "all":
-		    toArray = [null];
+		    toArray = [""];
 		    break;
 		}
 		while (toArray.length > 0){
@@ -368,9 +372,24 @@ var AoEUtil = AoEUtil || {
 	    }
 	    try {
 		sendChat("AoE", "[[" + cmd + "]]", saveCB.bind(undefined, chTok, tok));
+		didRoll = true;
 	    }
 	    catch (exc){
 		handleTokenError(chTok, tok, "Error processing roll " + cmd + ": " + exc);
+	    }
+	}
+	if (!didRoll){
+	    // no rolls were made, so send summary here if necessary
+	    if ((summary == "gm") || (summary == "all")){
+		var sum = "&{template:default} {{name=AoE Saves}}";
+		sum += "{{Saved=" + state.AoEUtil.summary.pass;
+		sum += "}} {{Failed=" + state.AoEUtil.summary.fail;
+		sum += "}} {{Targets=" + state.AoEUtil.summary.total;
+		if (state.AoEUtil.summary.error > 0){
+		    sum += "}} {{Errors=" + state.AoEUtil.summary.error;
+		}
+		sum += "}}";
+		AoEUtil.write(sum, (summary == "gm" ? "gm" : ""), "", "AoE");
 	    }
 	}
 	return err;
