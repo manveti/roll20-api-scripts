@@ -1,6 +1,7 @@
 var AoEUtil = AoEUtil || {
     CROSSHAIR_IMAGE: "https://s3.amazonaws.com/files.d20.io/images/21660349/y0ZYGERfgSU15XCLcv94zA/thumb.png?1470463643",
     DEFAULT_SIZE: 70,
+    TARGET_SCALE: 0.8,
     GRID_DIMS: {'square': {
 			'width': 70,
 			'height': 70
@@ -88,10 +89,12 @@ var AoEUtil = AoEUtil || {
     handleTokenMove: function(tok, prev){
 	if (tok.id == state.AoEUtil.aimTok){
 	    // tok is aim token; check whether it's within range and set the X icon if not
-	    if (state.AoEUtil.aimRange < 0){ return; }
 	    var page = getObj("page", tok.get('pageid'));
 	    var dist = AoEUtil.getDistance(state.AoEUtil.aimSource, [tok.get('left'), tok.get('top')], page);
-	    tok.set({"status_dead": (dist > state.AoEUtil.aimRange)});
+	    tok.set({'name': "" + dist});
+	    if (state.AoEUtil.aimRange >= 0){
+		tok.set({'status_dead': (dist > state.AoEUtil.aimRange)});
+	    }
 	    return;
 	}
 
@@ -218,13 +221,18 @@ var AoEUtil = AoEUtil || {
 	if (range < 0){ range = 0; }
 	var aimPoint = [aimTok.get('left'), aimTok.get('top')];
 	var page = getObj("page", aimTok.get('pageid'));
+	if (state.AoEUtil.aimRange >= 0){
+	    if (AoEUtil.getDistance(state.AoEUtil.aimSource, aimPoint, page) > state.AoEUtil.aimRange){
+		return "Error: Aim token out of range.";
+	    }
+	}
 	var toks = findObjs({'_type': "graphic", '_pageid': aimTok.get('pageid')}) || [];
 	for (var i = 0; i < toks.length; i++){
 	    if (toks[i].id == aimTok.id){ continue; }
 	    if (AoEUtil.getDistance(aimPoint, [toks[i].get('left'), toks[i].get('top')], page) > range){
 		continue;
 	    }
-	    var chSize = Math.max(toks[i].get('width'), toks[i].get('height'));
+	    var chSize = Math.round(Math.max(toks[i].get('width'), toks[i].get('height')) * AoEUtil.TARGET_SCALE);
 	    var chTok = createObj("graphic", {'subtype':	"token",
 					    '_pageid':		toks[i].get('pageid'),
 					    'imgsrc':		AoEUtil.CROSSHAIR_IMAGE,
@@ -248,11 +256,11 @@ var AoEUtil = AoEUtil || {
 	var err;
 
 	state.AoEUtil.summary = {'need': state.AoEUtil.targets.length, 'pass': 0, 'fail': 0, 'error': 0, 'total': 0};
-/////
-//
-	//figure out attributes we'll need for roll spec
-//
-/////
+	var exp = /\$\{([^}]+)}/g;
+	var varsNeeded = [];
+	for (var m = exp.exec(roll); m; m = exp.exec(roll)){
+	    varsNeeded.push(m[1]);
+	}
 	for (var i = 0; i < state.AoEUtil.targets.length; i++){
 	    var chTok = getObj("graphic", state.AoEUtil.targets[i].crosshair);
 	    var tok = getObj("graphic", state.AoEUtil.targets[i].target);
@@ -270,11 +278,13 @@ var AoEUtil = AoEUtil || {
 		}
 		else if (compFunc(msg[0].inlinerolls[0].results.total, dc)){
 		    status = "angel-outfit";
+		    res += "(" + msg[0].inlinerolls[0].expression + ") ";
 		    res += msg[0].inlinerolls[0].results.total + " vs. " + dc + ": Success";
 		    state.AoEUtil.summary.pass += 1;
 		}
 		else{
 		    status = "skull";
+		    res += "(" + msg[0].inlinerolls[0].expression + ") ";
 		    res += msg[0].inlinerolls[0].results.total + " vs. " + dc + ": Failure";
 		    state.AoEUtil.summary.fail += 1;
 		}
@@ -313,14 +323,55 @@ var AoEUtil = AoEUtil || {
 		    }
 		}
 	    };
-/////
-//
-	    //look up attributes for state.AoEUtil.targets[i].target; error=>set status_spanner on tok
-	    //cmd = "[["+substitute attributes into roll+"]]"
-	    var cmd = "[[" + roll + "]]";
-//
-/////
-	    sendChat("AoE", cmd, saveCB.bind(undefined, chTok, tok));
+	    var cmd = roll;
+	    function handleTokenError(chTok, tok, errMsg){
+		state.AoEUtil.summary.error += 1;
+		state.AoEUtil.summary.total += 1;
+		chTok.set({'statusmarkers': "spanner"});
+		errMsg = ((tok.get('name') + ": ") || "Unnamed token: ") + errMsg;
+		var toArray = [];
+		switch (results){
+		case "owner":
+		    toArray = (tok.get('controlledby') || "").split(',');
+		    if (!toArray[0]){ toArray.pop(); }
+		    // fall through to add GM too
+		case "gm":
+		    toArray.push("gm");
+		    break;
+		case "all":
+		    toArray = [null];
+		    break;
+		}
+		while (toArray.length > 0){
+		    var to = toArray.pop();
+		    AoEUtil.write(errMsg, to, "", "AoE");
+		}
+	    }
+	    if (varsNeeded.length > 0){
+		if (!tok.get('represents')){
+		    handleTokenError(chTok, tok, "Token doesn't represent a character.");
+		    continue;
+		}
+		var attrs = {};
+		for (var j = 0; j < varsNeeded.length; j++){
+		    attrs[varsNeeded[j]] = getAttrByName(tok.get('represents'), varsNeeded[j]);
+		}
+		var gotErr = false;
+		function replaceVars(s, attr){
+		    if (attrs[attr]){ return attrs[attr]; }
+		    gotErr = true;
+		    handleTokenError(chTok, tok, "Character doesn't have attribute " + attr);
+		    return s;
+		}
+		cmd = cmd.replace(exp, replaceVars);
+		if (gotErr){ continue; }
+	    }
+	    try {
+		sendChat("AoE", "[[" + cmd + "]]", saveCB.bind(undefined, chTok, tok));
+	    }
+	    catch (exc){
+		handleTokenError(chTok, tok, "Error processing roll " + cmd + ": " + exc);
+	    }
 	}
 	return err;
     },
@@ -365,6 +416,7 @@ var AoEUtil = AoEUtil || {
 		}
 		if (tokens[i] == "--force"){
 		    force = true;
+		    continue;
 		}
 		if (range < 0){
 		    range = parseInt(AoEUtil.fixupCommand(tokens[i], inlineRolls))

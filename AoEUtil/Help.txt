@@ -1,0 +1,58 @@
+AoEUtil
+
+AoEUtil is a set of commands for streamlining area-of-effect effects.  There are
+subcommands to aim an AoE effect, to select all affected targets, and to roll a
+save for each affected target.
+
+It is recommended that this script be used in conjunction with the CommandShell
+module, which will improve output formatting and command discovery.
+
+
+Commands:
+
+all AoEUtil commands are accessed via the "aoe" command, which provides the
+following subcommands (each described in greater detail in its own section:
+
+    !aoe help [COMMAND]
+	Display a help message.  If COMMAnd is specified, the help message will
+	detail the usage of the specified subcommand.  Otherwise, the help
+	message will summarize all available subcommands.
+
+    !aoe aim [RANGE] [options]
+	Creates an aiming token on top of the selected token.  If RANGE is
+	specified, the aiming token will only be valid within the specified
+	range of the selected token.  If a token is specified via "-t ID" or
+	"--token ID", it will be used instead of the selected token.
+
+    !aoe fire [RANGE]
+	Creates targeting tokens on top of each token within range of the aiming
+	token.  If RANGE is not specified, only tokens in the same space as the
+	aiming token will be targeted.
+
+    !aoe save ROLL [[COMP] DC] [options]
+	Rolls a save for each targeted token, marking success or failure on the
+	targeting overlay.  ROLL is a roll expression, which can access
+	character attributes like "${attribute_name}" (e.g. "1d20+${reflex}").
+	DC is the number against which to compare the result of ROLL.  If COMP
+	is provided, it must be one of >, >=, =, <=, <, or !=.  Otherwise, it
+	defaults to >=.  It is used to compare the result of ROLL to DC (e.g.
+	"!aoe save 1d20+${reflex} < 42" will succeed for tokens for which
+	"1d20+@{reflex}" is strictly less than 42, and fail for others).
+	Tokens which successfully save will have their target token marked with
+	angel wings.  Tokens which fail the save will have their target token
+	marked with a skull and crossbones.  Errors will be indicated by marking
+	the target token with a wrench.
+	The following options are allowed:
+	    -g, --gm		Only show roll results to GM (default: also show
+				to players controlling affected targets)
+	    -s, --summary	Show summary to everyone (default: only show
+				summary to GM)
+	    -f, --full		Show individual results and summary to everyone
+				(default: show results to players controlling
+				affected targets and summary to GM)
+	    -q, --quiet		Only generate summary (no individual results)
+	    -Q, --silent	Don't generate any output (only mark tokens)
+
+    !aoe clear
+	Clears any aiming and targeting tokens, removing associated internal
+	state.
