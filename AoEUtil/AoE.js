@@ -194,15 +194,17 @@ var AoEUtil = AoEUtil || {
 	return cmd.replace(/\$\[\[\d+\]\]/g, replaceInlines);
     },
 
+    getControlledBy: function(tok){
+	var retval = tok.get('controlledby');
+	var chr = getObj("character", tok.get('represents'));
+	if (chr){
+	    retval = chr.get('controlledby');
+	}
+	return retval;
+    },
+
     doAim: function(tok, range){
 	if (!tok){ return "Error: Aim command requires a token."; }
-	var controlledBy = tok.get('controlledby');
-	if (!controlledBy){
-	    var chr = getObj("character", tok.get('represents'));
-	    if (chr){
-		controlledBy = chr.get('controlledby');
-	    }
-	}
 	var aimTok = createObj("graphic", {'_subtype':		"token",
 					    '_pageid':		tok.get('pageid'),
 					    'imgsrc':		AoEUtil.CROSSHAIR_IMAGE,
@@ -212,7 +214,7 @@ var AoEUtil = AoEUtil || {
 					    'height':		AoEUtil.DEFAULT_SIZE,
 					    'layer':		tok.get('layer'),
 					    'name':		"",
-					    'controlledby':	controlledBy,
+					    'controlledby':	AoEUtil.getControlledBy(tok),
 					    'showname':		true,
 					    'showplayers_name':	true});
 	if (!aimTok){ return "Error: Failed to create aim token."; }
@@ -305,8 +307,23 @@ var AoEUtil = AoEUtil || {
 		var toArray = [];
 		switch (results){
 		case "owner":
-		    toArray = (tok.get('controlledby') || "").split(',');
-		    if (!toArray[0]){ toArray.pop(); }
+		    var chr = getObj("character", tok.get('represents'));
+		    if ((chr) && (chr.get('name'))){
+			toArray = [chr.get('name')];
+		    }
+		    else{
+			toArray = (AoEUtil.getControlledBy(tok) || "").split(',');
+			for (var j = 0; j < toArray.length; j++){
+			    var plr = getObj("player", toArray[j]);
+			    if ((plr) && (plr.get('_displayname'))){
+				toArray[j] = plr.get('_displayname');
+			    }
+			    else{
+				toArray[j] = "player|" + toArray[j];
+			    }
+			}
+			if (!toArray[0]){ toArray.pop(); }
+		    }
 		    // fall through to add GM too
 		case "gm":
 		    toArray.push("gm");
@@ -343,8 +360,23 @@ var AoEUtil = AoEUtil || {
 		var toArray = [];
 		switch (results){
 		case "owner":
-		    toArray = (tok.get('controlledby') || "").split(',');
-		    if (!toArray[0]){ toArray.pop(); }
+		    var chr = getObj("character", tok.get('represents'));
+		    if ((chr) && (chr.get('name'))){
+			toArray = [chr.get('name')];
+		    }
+		    else{
+			toArray = (AoEUtil.getControlledBy(tok) || "").split(',');
+			for (var j = 0; j < toArray.length; j++){
+			    var plr = getObj("player", toArray[j]);
+			    if ((plr) && (plr.get('_displayname'))){
+				toArray[j] = plr.get('_displayname');
+			    }
+			    else{
+				toArray[j] = "player|" + toArray[j];
+			    }
+			}
+			if (!toArray[0]){ toArray.pop(); }
+		    }
 		    // fall through to add GM too
 		case "gm":
 		    toArray.push("gm");
