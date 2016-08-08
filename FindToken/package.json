@@ -1,0 +1,10 @@
+{
+    "name":		"FindToken",
+    "version":		"0.1",
+    "description":	"Script to assist in finding tokens on the page, particularly on turn change.",
+    "authors":		"manveti",
+    "roll20userid":	"503018",
+    "dependencies":	{},
+    "modifies":		{},
+    "conflicts":	[]
+}

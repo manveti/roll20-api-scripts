@@ -1,0 +1,38 @@
+FindToken
+
+FindToken assists in locating tokens on the page.  It provides various ways to
+locate a token (either the token at the top of the turn tracker or a specified
+token), and can be configured to automatically locate the token at the top of
+the turn tracker when the turn changes.
+
+It is recommended that this script be used in conjunction with the CommandShell
+module, which will improve output formatting and command discovery.
+
+
+Syntax:
+
+!find [options]
+
+The "find" command accepts the following options:
+
+    -h, --help		Displays a help message and exits.
+
+    -c N, --cycles N	Flashes a beacon centered on the token in question N
+			times (default: 3; pass 0 to locate without a beacon).
+    -d N, --duration N	Each beacon flash will last N seconds (default: 1).
+
+    -a, --all		The beacon will be visible to all players (default: the
+			beacon is only visible to the GM).
+
+    -p, --ping		Ping the token in question, moving viewers to its
+			location (be aware that the ping is visible to all
+			players).
+
+    -t ID, --token ID	Find the specified token (default: find the token at the
+			top of the turn tracker).
+
+    -T, --turnchange	Use the options given with this command to find the
+			token at the top of the turn tracker every time the turn
+			changes (default: find the specified token once,
+			immediately).
+    -C, --clear		Clear turn-change options (equivalent to "-T -c 0").
