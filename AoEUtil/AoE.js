@@ -196,6 +196,13 @@ var AoEUtil = AoEUtil || {
 
     doAim: function(tok, range){
 	if (!tok){ return "Error: Aim command requires a token."; }
+	var controlledBy = tok.get('controlledby');
+	if (!controlledBy){
+	    var chr = getObj("character", tok.get('represents'));
+	    if (chr){
+		controlledBy = chr.get('controlledby');
+	    }
+	}
 	var aimTok = createObj("graphic", {'_subtype':		"token",
 					    '_pageid':		tok.get('pageid'),
 					    'imgsrc':		AoEUtil.CROSSHAIR_IMAGE,
@@ -205,7 +212,7 @@ var AoEUtil = AoEUtil || {
 					    'height':		AoEUtil.DEFAULT_SIZE,
 					    'layer':		tok.get('layer'),
 					    'name':		"",
-					    'controlledby':	tok.get('controlledby'),
+					    'controlledby':	controlledBy,
 					    'showname':		true,
 					    'showplayers_name':	true});
 	if (!aimTok){ return "Error: Failed to create aim token."; }
