@@ -43,12 +43,22 @@ var RollStats = RollStats || {
 	    if (rolls[i].type == "R"){
 		// roll; process results
 		if (rolls[i].table){ continue; }
+		if (!rolls[i].results){
+		    log("RollStats: Unable to process R node:");
+		    log(rolls[i]);
+		    continue;
+		}
 		for (var j = 0; j < rolls[i].results.length; j++){
 		    RollStats.processRoll(player, rolls[i].sides, rolls[i].results[j].v);
 		}
 	    }
 	    else if (rolls[i].type == "G"){
 		// group; process group elements
+		if (!rolls[i].rolls){
+		    log("RollStats: Unable to process G node:");
+		    log(rolls[i]);
+		    continue;
+		}
 		for (var j = 0; j < rolls[i].rolls.length; j++){
 		    RollStats.processRolls(player, rolls[i].rolls[j]);
 		}
@@ -378,7 +388,7 @@ var RollStats = RollStats || {
 	    }
 	}
 
-	if ((RollStats.doChatCommands) && (msg.type == "api") && (msg.indexOf("!rollstats") == 0)){
+	if ((RollStats.doChatCommands) && (msg.type == "api") && (msg.content.indexOf("!rollstats") == 0)){
 	    return RollStats.handleStatsMessage(msg.content.split(" "), msg);
 	}
     },
