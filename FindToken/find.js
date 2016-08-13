@@ -282,7 +282,6 @@ var FindTok = FindTok || {
 	on("destroy:graphic", FindTok.handleTokenDelete);
 	if ((typeof(Shell) != "undefined") && (Shell) && (Shell.registerCommand)){
 	    Shell.registerCommand("!find", "!find [options]", "Locate tokens", FindTok.handleFindMessage);
-	    Shell.permissionCommand(["!shell-permission", "add", "!find"], {'who': "gm"});
 	    if (Shell.write){
 		FindTok.write = Shell.write;
 	    }
