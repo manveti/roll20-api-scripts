@@ -25,6 +25,15 @@ var TokenPath = TokenPath || {
 	if (!state.TokenPath.hasOwnProperty('waypoints')){ state.TokenPath.waypoints = []; }
     },
 
+    getControlledBy: function(tok){
+	var retval = tok.get('controlledby');
+	var chr = getObj("character", tok.get('represents'));
+	if (chr){
+	    retval = chr.get('controlledby');
+	}
+	return retval;
+    },
+
     removeToken: function(tok){
 	TokenPath.ignoreRemoval[tok.id] = true;
 	tok.remove();
@@ -233,7 +242,7 @@ var TokenPath = TokenPath || {
 				'y':		state.TokenPath.pips[0].y,
 				'distance':	0,
 				'round':	0};
-		TokenPath.drawPip(startPip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), true);
+		TokenPath.drawPip(startPip, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok), true);
 		state.TokenPath.pips.unshift(startPip);
 		for (var i = 0; i < state.TokenPath.waypoints.length; i++){
 		    state.TokenPath.waypoints[i] += 1;
@@ -246,7 +255,7 @@ var TokenPath = TokenPath || {
 				'y':		state.TokenPath.pips[pipIdx].y,
 				'distance':	state.TokenPath.pips[pipIdx].distance,
 				'round':	state.TokenPath.pips[pipIdx].round};
-		TokenPath.drawPip(endPip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), false);
+		TokenPath.drawPip(endPip, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok), false);
 		state.TokenPath.pips.push(endPip);
 	    }
 	    state.TokenPath.pips[pipIdx].x = tok.get('left');
@@ -256,21 +265,21 @@ var TokenPath = TokenPath || {
 		// tok was already a waypoint; update paths into and out of it
 		pathStart = (wpIdx > 0 ? state.TokenPath.waypoints[wpIdx - 1] : 0);
 		pathEnd = pipIdx;
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 		pathStart = newEnd;
 		pathEnd = (wpIdx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[wpIdx + 1] : state.TokenPath.pips.length - 1);
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 	    }
 	    else{
 		// tok was not a waypoint; upgrade it to one and split path it was on into one in and one out of it
 		pathStart = (wpIdx > 0 ? state.TokenPath.waypoints[wpIdx - 1] : 0);
 		pathEnd = pipIdx;
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 		state.TokenPath.waypoints.splice(wpIdx, 0, newEnd);
 		tok.set({'tint_color': TokenPath.WAYPOINT_TINT});
 		pathStart = newEnd;
 		pathEnd = (wpIdx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[wpIdx + 1] : state.TokenPath.pips.length - 1);
-		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 	    }
 	    // fix up rest of path
 	    if (grid){
@@ -299,7 +308,7 @@ var TokenPath = TokenPath || {
 		for (wpIdx += 1; wpIdx < state.TokenPath.waypoints.length; wpIdx += 1){
 		    pathStart = newEnd;
 		    pathEnd = (wpIdx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[wpIdx + 1] : state.TokenPath.pips.length - 1);
-		    newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		    newEnd = TokenPath.updatePath(pathStart, pathEnd, wpIdx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 		}
 	    }
 	    return;
@@ -315,7 +324,7 @@ var TokenPath = TokenPath || {
 	// if we get here, tok is at the top of the turn order; track its movement
 	if (!state.TokenPath.pips[0].token){
 	    // initial pip not created yet; do so
-	    TokenPath.drawPip(state.TokenPath.pips[0], tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), true);
+	    TokenPath.drawPip(state.TokenPath.pips[0], tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok), true);
 	}
 
 	// delete last segment of path
@@ -330,10 +339,10 @@ var TokenPath = TokenPath || {
 
 	// generate new path from last good pip to tok's current position
 	var newPips = TokenPath.drawPath(state.TokenPath.pips[lastGoodPip], {'x': tok.get('left'), 'y': tok.get('top')},
-					    grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+					    grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 	if (newPips.length > 0){
 	    var lastPip = newPips[newPips.length - 1];
-	    TokenPath.drawPip(lastPip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), false);
+	    TokenPath.drawPip(lastPip, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok), false);
 	    for (var i = 0; i < newPips.length; i++){ state.TokenPath.pips.push(newPips[i]); }
 	}
     },
@@ -357,7 +366,7 @@ var TokenPath = TokenPath || {
 	    var diag = page.get('diagonaltype'), scale = page.get('scale_number');
 	    var pathStart = (idx > 0 ? state.TokenPath.waypoints[idx - 1] : 0);
 	    var pathEnd = (idx < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[idx] : state.TokenPath.pips.length - 1);
-	    var newEnd = TokenPath.updatePath(pathStart, pathEnd, idx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+	    var newEnd = TokenPath.updatePath(pathStart, pathEnd, idx, grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 	    // fix up rest of path
 	    if (grid){
 		var allPips = state.TokenPath.pips;
@@ -385,7 +394,7 @@ var TokenPath = TokenPath || {
 		for (; idx < state.TokenPath.waypoints.length; idx += 1){
 		    pathStart = newEnd;
 		    pathEnd = (idx + 1 < state.TokenPath.waypoints.length ? state.TokenPath.waypoints[idx + 1] : state.TokenPath.pips.length - 1);
-		    newEnd = TokenPath.updatePath(pathStart, pathEnd, idx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'));
+		    newEnd = TokenPath.updatePath(pathStart, pathEnd, idx + 1, grid, diag, scale, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok));
 		}
 	    }
 	    return;
@@ -397,7 +406,7 @@ var TokenPath = TokenPath || {
 	if (idx < state.TokenPath.pips.length){
 	    // tok was a non-waypoint pip; replace pip
 	    var pip = state.TokenPath.pips[idx];
-	    TokenPath.drawPip(pip, tok.get('pageid'), tok.get('layer'), tok.get('controlledby'), (idx == 0));
+	    TokenPath.drawPip(pip, tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok), (idx == 0));
 	}
     },
 
