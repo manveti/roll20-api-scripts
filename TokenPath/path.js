@@ -230,6 +230,8 @@ var TokenPath = TokenPath || {
 		    tok.set({'left': tok.get('left') + expXOff - xOff, 'top': tok.get('top') + expYOff - yOff});
 		}
 	    }
+	    // if pip didn't actually move, we don't need to do anything
+	    if ((tok.get('left') == prev['left']) && (tok.get('right') == prev['right'])){ return; }
 	    // determine if pip was waypoint; we'll use this later, and might change pipIdx below
 	    var wpIdx, isWp = false;
 	    for (wpIdx = 0; wpIdx < state.TokenPath.waypoints.length; wpIdx++){
