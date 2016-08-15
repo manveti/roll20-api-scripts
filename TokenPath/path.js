@@ -39,14 +39,7 @@ var TokenPath = TokenPath || {
 	tok.remove();
     },
 
-    handleTurnChange: function(newTurnOrder, oldTurnOrder){
-	var newTurns = JSON.parse((typeof(newTurnOrder) == typeof("") ? newTurnOrder : newTurnOrder.get('turnorder') || "[]"));
-	var oldTurns = JSON.parse((typeof(oldTurnOrder) == typeof("") ? oldTurnOrder : oldTurnOrder.turnorder || "[]"));
-
-	if ((!newTurns) || (!newTurns.length)){ return; } // nothing in tracker
-	if ((oldTurns) && (oldTurns.length) && (newTurns[0].id == oldTurns[0].id)){ return; } // turn didn't change
-
-	// remove existing path
+    clearPath: function(){
 	state.TokenPath.waypoints = [];
 	while (state.TokenPath.pips.length > 0){
 	    var pip = state.TokenPath.pips.pop();
@@ -55,11 +48,26 @@ var TokenPath = TokenPath || {
 		if (tok){ TokenPath.removeToken(tok); }
 	    }
 	}
+    },
+
+    initPath: function(x, y){
+	state.TokenPath.pips.push({'x': x, 'y': y, 'distance': 0, 'round': 0});
+    },
+
+    handleTurnChange: function(newTurnOrder, oldTurnOrder){
+	var newTurns = JSON.parse((typeof(newTurnOrder) == typeof("") ? newTurnOrder : newTurnOrder.get('turnorder') || "[]"));
+	var oldTurns = JSON.parse((typeof(oldTurnOrder) == typeof("") ? oldTurnOrder : oldTurnOrder.turnorder || "[]"));
+
+	if ((!newTurns) || (!newTurns.length)){ return; } // nothing in tracker
+	if ((oldTurns) && (oldTurns.length) && (newTurns[0].id == oldTurns[0].id)){ return; } // turn didn't change
+
+	// remove existing path
+	TokenPath.clearPath();
 
 	// start new path if current turn is for a valid token
 	var tok = getObj("graphic", newTurns[0].id);
 	if (!tok){ return; }
-	state.TokenPath.pips.push({'x': tok.get('left'), 'y': tok.get('top'), 'distance': 0, 'round': 0});
+	TokenPath.initPath(tok.get('left'), tok.get('top'));
     },
 
     drawPip: function(pip, pageId, layer, controlledBy, isStart){
@@ -185,6 +193,7 @@ var TokenPath = TokenPath || {
 	    if (!state.TokenPath.pips[i].token){ continue; }
 	    var pipTok = getObj("graphic", state.TokenPath.pips[i].token);
 	    if (pipTok){ TokenPath.removeToken(pipTok); }
+	    delete state.TokenPath.pips[i].token;
 	}
 
 	// draw a new path from pathStart to pathEnd
@@ -322,8 +331,16 @@ var TokenPath = TokenPath || {
 	    // it isn't tok's turn; ignore its movement
 	    return;
 	}
+	if (!Campaign().get('initiativepage')){
+	    TokenPath.clearPath();
+	    return;
+	}
 
 	// if we get here, tok is at the top of the turn order; track its movement
+	if (state.TokenPath.pips.length <= 0){
+	    // path not initialized yet; do so
+	    TokenPath.initPath(prev['left'], prev['top']);
+	}
 	if (!state.TokenPath.pips[0].token){
 	    // initial pip not created yet; do so
 	    TokenPath.drawPip(state.TokenPath.pips[0], tok.get('pageid'), tok.get('layer'), TokenPath.getControlledBy(tok), true);
