@@ -31,6 +31,7 @@ return {
                 announcePlayerInTurnAnnounce: true,
                 announcePlayerInTurnAnnounceSize: '100%',
                 autoskipHidden: true,
+		autoskipMarker: true,
                 tokenName: 'Round',
                 tokenURL: 'https://s3.amazonaws.com/files.d20.io/images/4095816/086YSl3v0Kz3SlDAu245Vg/thumb.png?1400535580',
                 playAnimations: false,
@@ -197,6 +198,11 @@ return {
                 sendChat('','/w '+who+' <b>Auto-skip Hidden</b> is now <b>'+(state.TurnMarker.autoskipHidden ? 'ON':'OFF' )+'</b>.');
                 break;
 
+            case 'toggle-skip-marker':
+                state.TurnMarker.autoskipMarker=!state.TurnMarker.autoskipMarker;
+                sendChat('','/w '+who+' <b>Auto-skip Marker</b> is now <b>'+(state.TurnMarker.autoskipMarker ? 'ON':'OFF' )+'</b>.');
+		break;
+
             case 'toggle-animations':
                 state.TurnMarker.playAnimations=!state.TurnMarker.playAnimations;
                 if(state.TurnMarker.playAnimations)
@@ -263,6 +269,8 @@ return {
                 +'<li style="border-bottom: 1px solid #ccc;"><b><span style="font-family: serif;">toggle-announce-player</span></b> -- When on, the player(s) controlling the current turn are included in the turn announcement.</li> '
                     +'<div style="float:right;width:40px;border:1px solid black;background-color:#ffc;text-align:center;">'+( state.TurnMarker.autoskipHidden ? '<span style="color: red; font-weight:bold; padding: 0px 4px;">ON</span>' : '<span style="color: #999999; font-weight:bold; padding: 0px 4px;">OFF</span>' )+'</div>'
                 +'<li style="border-bottom: 1px solid #ccc;"><b><span style="font-family: serif;">toggle-skip-hidden</span></b> -- When on, turn order will automatically be advanced past any hidden turns.</li> '
+                    +'<div style="float:right;width:40px;border:1px solid black;background-color:#ffc;text-align:center;">'+( state.TurnMarker.autoskipMarker ? '<span style="color: red; font-weight:bold; padding: 0px 4px;">ON</span>' : '<span style="color: #999999; font-weight:bold; padding: 0px 4px;">OFF</span>' )+'</div>'
+                +'<li style="border-bottom: 1px solid #ccc;"><b><span style="font-family: serif;">toggle-skip-marker</span></b> -- When on, turn order will automatically be advanced past the turn marker.</li> '
                     +'<div style="float:right;width:40px;border:1px solid black;background-color:#ffc;text-align:center;">'+( state.TurnMarker.playAnimations ? '<span style="color: red; font-weight:bold; padding: 0px 4px;">ON</span>' : '<span style="color: #999999; font-weight:bold; padding: 0px 4px;">OFF</span>' )+'</div>'
                 +'<li style="border-bottom: 1px solid #ccc;"><b><span style="font-family: serif;">toggle-animations</span></b> -- Turns on turn marker animations. [Experimental!]</li> '
                     +'<div style="float:right;width:40px;border:1px solid black;background-color:#ffc;text-align:center;">'+( state.TurnMarker.rotation ? '<span style="color: red; font-weight:bold; padding: 0px 4px;">ON</span>' : '<span style="color: #999999; font-weight:bold; padding: 0px 4px;">OFF</span>' )+'</div>'
@@ -381,7 +389,10 @@ return {
                 bar2_value: round
             });
             TurnMarker._AnnounceRound(round);
-            TurnOrder.Next();
+	    if(state.TurnMarker.autoskipHidden)
+	    {
+		TurnOrder.Next();
+	    }
         }
     },
     _HandleAnnounceTurnChange: function(){
