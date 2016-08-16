@@ -635,14 +635,10 @@ return {
                 return;
             }
             
-            /* clean up message bits. */
-            msg.who = msg.who.replace(" (GM)", "");
-            msg.content = msg.content.replace("(GM) ", "");
-
             // get minimal player name (hopefully unique!)
             var who=getObj('player',msg.playerid).get('_displayname').split(' ')[0];
 
-            var tokenized = msg.content.split(" ");
+            var tokenized = msg.content.replace("(GM) ", "").split(" ");
             var command = tokenized[0];
 
             switch(command)
