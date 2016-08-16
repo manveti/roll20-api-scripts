@@ -37,7 +37,7 @@ var RollStats = RollStats || {
     },
 
     processRolls: function(player, rolls){
-	if (!_.isArray(rolls) ){ return; }
+	if (!rolls){ return; }
 
 	for (var i = 0; i < rolls.length; i++){
 	    if (rolls[i].type == "R"){
